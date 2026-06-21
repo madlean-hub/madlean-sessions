@@ -1,0 +1,739 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rpylean: Building Your Own Lean Kernel for Fun</title><link rel="stylesheet" href="lib/reveal.js/dist/reset.css">
+    <link rel="stylesheet" href="lib/reveal.js/dist/reveal.css">
+    <link rel="stylesheet" href="lib/reveal.js/dist/theme/black.css">
+    <link rel="stylesheet" href="lib/monokai.css">
+    <link rel="stylesheet" href="lib/highlighting.css">
+    <link rel="stylesheet" href="lib/tippy-border.css">
+    <link rel="stylesheet" href="lib/slides-highlight.css">
+    <link rel="stylesheet" href="lib/panel.css">
+    <link rel="stylesheet" href="lib/lightbox.css">
+    <link rel="stylesheet" href="lib/diagram.css">
+    <link rel="stylesheet" href="lib/illuminate-anim.css">
+    <link rel="stylesheet" href="lib/table.css">
+    <link rel="stylesheet" href="lib/katex/dist/katex.min.css">
+    </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section>
+          <h2>
+            rpylean</h2>
+          <p>
+            <strong>Building Your Own Lean Kernel for Fun</strong></p>
+          <p>
+            <em>Aaron Hill</em> · Julian Berman · <em>Austin Letson</em></p>
+          <aside class="notes"><p>
+              Welcome. Today: what actually happens to your proofs after you write them,
+and what we learned by building a small program that re-checks Lean's work.
+rpylean is joint work with Aaron Hill and Austin Letson.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Hi I'm Julian.</h2>
+          <p>
+            <em>(I'm a fan, not an expert!)</em></p>
+          </section>
+        <section>
+          <h2>
+            This type-checks</h2>
+          <div class="code-with-panel r-stretch">
+            <code class="hl lean block"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.definition-283">def</span><span class="inter-text"> </span><span class="const token" data-binding="const-RpyleanExamples.mostInteresting" data-verso-hover="0">mostInteresting</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.typeSpec-303">:</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">ℕ</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Command.declValSimple-309">:=</span><span class="inter-text"> </span><span class="literal number token" data-binding="" data-verso-hover="2">37</span></code><div class="panel-divider"></div>
+            <div class="panel-cell">
+              <div class="info-panel"></div>
+              </div>
+            </div>
+          <aside class="notes"><p>
+              Start with the most basic thing a type checker does.
+We claim <code>mostInteresting</code> has type <code>ℕ</code>, and we hand over the term <code>37</code>.
+<code>37</code> really is a <code>ℕ</code>, so the term has the type we claimed.
+That is a complete, if tiny, act of type checking.</p>
+            </aside></section>
+        <section>
+          <h2>
+            This doesn't</h2>
+          <div class="code-with-panel r-stretch">
+            <code class="hl lean block"><span class="doc-comment token" data-binding="">/-- error: Type mismatch
+  "not 37"
+has type
+  String
+but is expected to have type
+  ℕ
+-/</span><span class="inter-text">
+</span><span class="keyword token" data-binding="kw-occ-Lean.guardMsgsCmd-677" data-verso-hover="3">#guard_msgs</span><span class="inter-text"> </span><span class="keyword token" data-binding="kw-occ-Lean.guardMsgsCmd-677" data-verso-hover="3">in</span><span class="inter-text">
+</span><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.example-784">example</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.typeSpec-792">:</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">ℕ</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Command.declValSimple-798">:=</span><span class="inter-text"> </span><span class="literal string token" data-binding="" data-verso-hover="4">"not 37"</span></code><div class="panel-divider"></div>
+            <div class="panel-cell">
+              <div class="info-panel"></div>
+              </div>
+            </div>
+          <aside class="notes"><p>
+              Swap the term for a string and the check fails:
+the term's type, <code>String</code>, isn't the <code>ℕ</code> we claimed, and Lean says so.</p>
+            </aside></section>
+        <section>
+          <h2>
+            This proof checks</h2>
+          <div class="code-with-panel r-stretch">
+            <code class="hl lean block"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.theorem-316">theorem</span><span class="inter-text"> </span><span class="const token" data-binding="const-RpyleanExamples.one_add_one" data-verso-hover="5">one_add_one</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.typeSpec-336">:</span><span class="inter-text"> </span><span class="literal number token" data-binding="" data-verso-hover="2">1</span><span class="inter-text"> </span><span class="punctuation operator token" data-binding="kw-occ-«term_+_»-338">+</span><span class="inter-text"> </span><span class="literal number token" data-binding="" data-verso-hover="2">1</span><span class="inter-text"> </span><span class="punctuation operator token" data-binding="kw-occ-«term_=_»-338">=</span><span class="inter-text"> </span><span class="literal number token" data-binding="" data-verso-hover="2">2</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Command.declValSimple-348">:=</span><span class="inter-text"> </span><span class="const token" data-binding="const-rfl" data-verso-hover="6">rfl</span></code><div class="panel-divider"></div>
+            <div class="panel-cell">
+              <div class="info-panel"></div>
+              </div>
+            </div>
+          <aside class="notes"><p>
+              A theorem is checked the very same way.
+We claim <code>1 + 1 = 2</code>, and the proof is <code>rfl</code> -- "the two sides are the same once you compute".
+The kernel reduces <code>1 + 1</code> to <code>2</code>, sees they match, and accepts.
+Same act of type checking, now at the level of a proof.</p>
+            </aside></section>
+        <section>
+          <h2>
+            This proof doesn't</h2>
+          <div class="code-with-panel r-stretch">
+            <code class="hl lean block"><span class="doc-comment token" data-binding="">/-- error: Tactic `rfl` failed: The left-hand side
+  1 + 1
+is not definitionally equal to the right-hand side
+  3
+
+⊢ 1 + 1 = 3
+-/</span><span class="inter-text">
+</span><span class="keyword token" data-binding="kw-occ-Lean.guardMsgsCmd-811" data-verso-hover="3">#guard_msgs</span><span class="inter-text"> </span><span class="keyword token" data-binding="kw-occ-Lean.guardMsgsCmd-811" data-verso-hover="3">in</span><span class="inter-text">
+</span><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.example-958">example</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.typeSpec-966">:</span><span class="inter-text"> </span><span class="literal number token" data-binding="" data-verso-hover="2">1</span><span class="inter-text"> </span><span class="punctuation operator token" data-binding="kw-occ-«term_+_»-968">+</span><span class="inter-text"> </span><span class="literal number token" data-binding="" data-verso-hover="2">1</span><span class="inter-text"> </span><span class="punctuation operator token" data-binding="kw-occ-«term_=_»-968">=</span><span class="inter-text"> </span><span class="literal number token" data-binding="" data-verso-hover="2">3</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Command.declValSimple-978">:=</span><span class="inter-text"> </span><span class="tactic" data-tactic-range="981-983"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Term.byTactic-981" data-verso-hover="7">by</span><span class="tactic-state" style="display:none"><span class="goal"><span class="conclusion"><span class="prefix">⊢ </span><span class="type"><span class="inter-text"></span><span class="unknown token" data-binding="">1</span><span class="inter-text"> </span><span class="const token" data-binding="const-HAdd.hAdd" data-verso-hover="8">+</span><span class="inter-text"> </span><span class="unknown token" data-binding="">1</span><span class="inter-text"> </span><span class="const token" data-binding="const-Eq" data-verso-hover="9">=</span><span class="inter-text"> </span><span class="unknown token" data-binding="">3</span></span></span></span></span></span><span class="inter-text"> </span><span class="tactic" data-tactic-range="984-987"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Tactic.tacticRfl-984" data-verso-hover="10">rfl</span><span class="tactic-state" style="display:none"><span class="goal"><span class="conclusion"><span class="prefix">⊢ </span><span class="type"><span class="inter-text"></span><span class="unknown token" data-binding="">1</span><span class="inter-text"> </span><span class="const token" data-binding="const-HAdd.hAdd" data-verso-hover="8">+</span><span class="inter-text"> </span><span class="unknown token" data-binding="">1</span><span class="inter-text"> </span><span class="const token" data-binding="const-Eq" data-verso-hover="9">=</span><span class="inter-text"> </span><span class="unknown token" data-binding="">3</span></span></span></span></span></span></code><div class="panel-divider"></div>
+            <div class="panel-cell">
+              <div class="info-panel"></div>
+              </div>
+            </div>
+          <aside class="notes"><p>
+              Claim <code>1 + 1 = 3</code> and <code>rfl</code> can't prove it:
+<code>1 + 1</code> reduces to <code>2</code>, not <code>3</code>, so the two sides aren't definitionally equal.</p>
+            </aside></section>
+        <section>
+          <h2>
+            What type checking isn't</h2>
+          </section>
+        <section>
+          <h2>
+            Notation</h2>
+          <div class="code-with-panel r-stretch">
+            <code class="hl lean block"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.set_option-464" data-verso-hover="11">set_option</span><span class="inter-text"> </span><span class="option token" data-binding="option-pp.notation" data-verso-hover="12">pp.notation</span><span class="inter-text"> </span><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.set_option-464" data-verso-hover="11">false</span><span class="inter-text"> </span><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.in-464">in</span><span class="inter-text">
+</span><span class="has-info information"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.check-496">#check</span><span class="hover-info messages" style="display:none"><code class="verso-message information"><span class="text"></span><span class="highlighted"><span class="inter-text"></span><span class="const token" data-binding="const-Nat" data-verso-hover="1">Nat</span><span class="inter-text"></span></span><span class="text"> : </span><span class="highlighted"><span class="inter-text"></span><span class="sort token" data-binding="sort-7243200735919010059" data-verso-hover="13">Type</span><span class="inter-text"></span></span></code></span></span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">ℕ</span></code><div class="panel-divider"></div>
+            <div class="panel-cell">
+              <div class="info-panel"></div>
+              </div>
+            </div>
+          <aside class="notes"><p>
+              Lean expands notation first. Put your cursor on the <code>#check</code>: with notation
+turned off, <code>ℕ</code> shows as <code>Nat</code> -- the symbol we have been writing all along is
+just surface syntax for the underlying type. <code>+</code>, <code>∑</code>, <code>≤</code>, <code>∫</code>, <code>ℕ</code>, <code>ℝ</code> are
+all readable notation; the kernel never sees them.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Implicit arguments</h2>
+          <div class="code-with-panel r-stretch">
+            <code class="hl lean block"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.set_option-508" data-verso-hover="11">set_option</span><span class="inter-text"> </span><span class="option token" data-binding="option-pp.explicit" data-verso-hover="14">pp.explicit</span><span class="inter-text"> </span><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.set_option-508" data-verso-hover="11">true</span><span class="inter-text"> </span><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.in-508">in</span><span class="inter-text">
+</span><span class="has-info information"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.check-539">#check</span><span class="hover-info messages" style="display:none"><code class="verso-message information"><span class="text"></span><span class="highlighted"><span class="keyword token" data-binding="">fun</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.1" data-verso-hover="15">l</span><span class="inter-text"> </span><span class="unknown token" data-binding="">=&gt;</span><span class="inter-text"> </span><span class="unknown token" data-binding="">@</span><span class="const token" data-binding="const-List.length" data-verso-hover="16">List.length</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">Nat</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.1" data-verso-hover="15">l</span></span><span class="text"> : </span><span class="highlighted"><span class="inter-text"></span><span class="const token" data-binding="const-List" data-verso-hover="17">List</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">Nat</span><span class="inter-text"> </span><span class="unknown token" data-binding="">→</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">Nat</span></span></code></span></span><span class="inter-text"> </span><span class="keyword token" data-binding="kw-occ-Lean.Parser.Term.fun-546">fun</span><span class="inter-text"> </span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.hygienicLParen-550">(</span><span class="var token" data-binding="var-_uniq.10583" data-verso-hover="15">l</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.typeAscription-550">:</span><span class="inter-text"> </span><span class="const token" data-binding="const-List" data-verso-hover="17">List</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">ℕ</span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.typeAscription-550">)</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.basicFun-550">=&gt;</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.10583" data-verso-hover="15">l</span><span class="built-in delim token" data-binding="">.</span><span class="const token" data-binding="const-List.length" data-verso-hover="16">length</span></code><div class="panel-divider"></div>
+            <div class="panel-cell">
+              <div class="info-panel"></div>
+              </div>
+            </div>
+          <aside class="notes"><p>
+              You leave the type out; the elaborator reconstructs it. Cursor on the
+<code>#check</code>: made explicit, <code>l.length</code> is <code>@List.length Nat l</code> -- the hidden <code>Nat</code>
+is filled in. By the time the kernel sees the term, every implicit argument is
+spelled out.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Coercions</h2>
+          <div class="code-with-panel r-stretch">
+            <code class="hl lean block"><span class="has-info information"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.check-578">#check</span><span class="hover-info messages" style="display:none"><code class="verso-message information"><span class="text"></span><span class="highlighted"><span class="keyword token" data-binding="">fun</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.1" data-verso-hover="2">n</span><span class="inter-text"> </span><span class="unknown token" data-binding="">=&gt;</span><span class="inter-text"> </span><span class="unknown token" data-binding="">↑</span><span class="var token" data-binding="var-_pp_uniq.1" data-verso-hover="2">n</span></span><span class="text"> : </span><span class="highlighted"><span class="inter-text"></span><span class="const token" data-binding="const-Nat" data-verso-hover="1">ℕ</span><span class="inter-text"> </span><span class="unknown token" data-binding="">→</span><span class="inter-text"> </span><span class="const token" data-binding="const-Int" data-verso-hover="18">ℤ</span></span></code></span></span><span class="inter-text"> </span><span class="keyword token" data-binding="kw-occ-Lean.Parser.Term.fun-585">fun</span><span class="inter-text"> </span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.hygienicLParen-589">(</span><span class="var token" data-binding="var-_uniq.10591" data-verso-hover="2">n</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.typeAscription-589">:</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">ℕ</span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.typeAscription-589">)</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.basicFun-589">=&gt;</span><span class="inter-text"> </span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.hygienicLParen-602">(</span><span class="var token" data-binding="var-_uniq.10591" data-verso-hover="2">n</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.typeAscription-602">:</span><span class="inter-text"> </span><span class="const token" data-binding="const-Int" data-verso-hover="18">ℤ</span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.typeAscription-602">)</span></code><div class="panel-divider"></div>
+            <div class="panel-cell">
+              <div class="info-panel"></div>
+              </div>
+            </div>
+          <aside class="notes"><p>
+              With <code>n : Nat</code> used where an <code>Int</code> is expected, Lean inserts a coercion.
+Cursor on the <code>#check</code>: the result is <code>fun n =&gt; ↑n</code> -- that <code>↑</code> is a cast you
+never wrote. The kernel sees the cast, not your intention to "just use n".</p>
+            </aside></section>
+        <section>
+          <h2>
+            Instance resolution</h2>
+          <div class="code-with-panel r-stretch">
+            <code class="hl lean block"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.set_option-613" data-verso-hover="11">set_option</span><span class="inter-text"> </span><span class="option token" data-binding="option-pp.explicit" data-verso-hover="14">pp.explicit</span><span class="inter-text"> </span><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.set_option-613" data-verso-hover="11">true</span><span class="inter-text"> </span><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.in-613">in</span><span class="inter-text">
+</span><span class="has-info information"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.check-644">#check</span><span class="hover-info messages" style="display:none"><code class="verso-message information"><span class="text"></span><span class="highlighted"><span class="keyword token" data-binding="">fun</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.2" data-verso-hover="19">a</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.3" data-verso-hover="19">b</span><span class="inter-text"> </span><span class="unknown token" data-binding="">=&gt;</span><span class="inter-text"> </span><span class="unknown token" data-binding="">@</span><span class="const token" data-binding="const-HAdd.hAdd" data-verso-hover="8">HAdd.hAdd</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">Nat</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">Nat</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">Nat</span><span class="inter-text"> </span><span class="unknown token" data-binding="">(@</span><span class="const token" data-binding="const-instHAdd" data-verso-hover="20">instHAdd</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">Nat</span><span class="inter-text"> </span><span class="const token" data-binding="const-instAddNat" data-verso-hover="21">instAddNat</span><span class="unknown token" data-binding="">)</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.2" data-verso-hover="19">a</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.3" data-verso-hover="19">b</span></span><span class="text"> : </span><span class="highlighted"><span class="inter-text"></span><span class="const token" data-binding="const-Nat" data-verso-hover="1">Nat</span><span class="inter-text"> </span><span class="unknown token" data-binding="">→</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">Nat</span><span class="inter-text"> </span><span class="unknown token" data-binding="">→</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">Nat</span></span></code></span></span><span class="inter-text"> </span><span class="keyword token" data-binding="kw-occ-Lean.Parser.Term.fun-651">fun</span><span class="inter-text"> </span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.hygienicLParen-655">(</span><span class="var token" data-binding="var-_uniq.10621" data-verso-hover="19">a</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.10623" data-verso-hover="19">b</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.typeAscription-655">:</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">ℕ</span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.typeAscription-655">)</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.basicFun-655">=&gt;</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.10621" data-verso-hover="19">a</span><span class="inter-text"> </span><span class="punctuation operator token" data-binding="kw-occ-«term_+_»-670">+</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.10623" data-verso-hover="19">b</span></code><div class="panel-divider"></div>
+            <div class="panel-cell">
+              <div class="info-panel"></div>
+              </div>
+            </div>
+          <aside class="notes"><p>
+              To make sense of <code>+</code>, Lean searches for an <code>Add</code> instance and plugs it in.
+Cursor on the <code>#check</code>: made explicit, <code>a + b</code> is
+<code>@HAdd.hAdd Nat Nat Nat (@instHAdd Nat instAddNat) a b</code> -- the chosen instance
+<code>instAddNat</code> becomes an invisible argument. Keep that in mind; it can surprise
+you. We'll come back to it.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Running tactics</h2>
+          <div class="code-with-panel r-stretch">
+            <code class="hl lean block"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.theorem-174">theorem</span><span class="inter-text"> </span><span class="const token" data-binding="const-RpyleanExamples.append_nil_length" data-verso-hover="22">append_nil_length</span><span class="inter-text"> </span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.explicitBinder-200">(</span><span class="var token" data-binding="var-_uniq.9599" data-verso-hover="23">l</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.explicitBinder-200">:</span><span class="inter-text"> </span><span class="const token" data-binding="const-List" data-verso-hover="17">List</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">ℕ</span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.explicitBinder-200">)</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.typeSpec-215">:</span><span class="inter-text"> </span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.hygienicLParen-217">(</span><span class="var token" data-binding="var-_uniq.9599" data-verso-hover="23">l</span><span class="inter-text"> </span><span class="punctuation operator token" data-binding="kw-occ-«term_++_»-218">++</span><span class="inter-text"> </span><span class="punctuation bracket token" data-binding="kw-occ-«term[_]»-223">[</span><span class="punctuation bracket token" data-binding="kw-occ-«term[_]»-223">]</span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.paren-217">)</span><span class="built-in delim token" data-binding="">.</span><span class="const token" data-binding="const-List.length" data-verso-hover="16">length</span><span class="inter-text"> </span><span class="punctuation operator token" data-binding="kw-occ-«term_=_»-217">=</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.9599" data-verso-hover="23">l</span><span class="built-in delim token" data-binding="">.</span><span class="const token" data-binding="const-List.length" data-verso-hover="16">length</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Command.declValSimple-245">:=</span><span class="inter-text"> </span><span class="tactic" data-tactic-range="248-250"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Term.byTactic-248" data-verso-hover="7">by</span><span class="tactic-state" style="display:none"><span class="goal"><span class="hypotheses"><span class="hypothesis"><span class="name"><span class="var token" data-binding="var-_uniq.9599" data-verso-hover="23">l</span></span><span class="colon">:</span><span class="type"><span class="inter-text"></span><span class="const token" data-binding="const-List" data-verso-hover="17">List</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">ℕ</span></span></span></span><span class="conclusion"><span class="prefix">⊢ </span><span class="type"><span class="const token" data-binding="const-HAppend.hAppend" data-verso-hover="24">(</span><span class="var token" data-binding="var-_uniq.9599" data-verso-hover="23">l</span><span class="inter-text"> </span><span class="const token" data-binding="const-HAppend.hAppend" data-verso-hover="24">++</span><span class="inter-text"> </span><span class="const token" data-binding="const-List.nil" data-verso-hover="25">[</span><span class="const token" data-binding="const-List.nil" data-verso-hover="25">]</span><span class="const token" data-binding="const-HAppend.hAppend" data-verso-hover="24">)</span><span class="unknown token" data-binding="">.</span><span class="const token" data-binding="const-List.length" data-verso-hover="16">length</span><span class="inter-text"> </span><span class="const token" data-binding="const-Eq" data-verso-hover="9">=</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.9599" data-verso-hover="23">l</span><span class="unknown token" data-binding="">.</span><span class="const token" data-binding="const-List.length" data-verso-hover="16">length</span></span></span></span></span></span><span class="inter-text"> </span><span class="tactic" data-tactic-range="251-255"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Tactic.simp-251" data-verso-hover="26">simp</span><span class="tactic-state" style="display:none">All goals completed! 🐙</span></span><span class="inter-text">
+
+</span><span class="has-info information"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.print-257">#print</span><span class="hover-info messages" style="display:none"><code class="verso-message information"><span class="text"></span><span class="text"></span><span class="text">theorem</span><span class="text"> </span><span class="text">RpyleanExamples.append_nil_length</span><span class="text"></span><span class="text"> : </span><span class="highlighted"><span class="unknown token" data-binding="">∀</span><span class="inter-text"> </span><span class="unknown token" data-binding="">(</span><span class="var token" data-binding="var-_pp_uniq.1" data-verso-hover="23">l</span><span class="inter-text"> </span><span class="unknown token" data-binding="">:</span><span class="inter-text"> </span><span class="const token" data-binding="const-List" data-verso-hover="17">List</span><span class="inter-text"> </span><span class="const token" data-binding="const-Nat" data-verso-hover="1">ℕ</span><span class="unknown token" data-binding="">),</span><span class="inter-text"> </span><span class="const token" data-binding="const-HAppend.hAppend" data-verso-hover="24">(</span><span class="var token" data-binding="var-_pp_uniq.1" data-verso-hover="23">l</span><span class="inter-text"> </span><span class="const token" data-binding="const-HAppend.hAppend" data-verso-hover="24">++</span><span class="inter-text"> </span><span class="const token" data-binding="const-List.nil" data-verso-hover="25">[</span><span class="const token" data-binding="const-List.nil" data-verso-hover="25">]</span><span class="const token" data-binding="const-HAppend.hAppend" data-verso-hover="24">)</span><span class="unknown token" data-binding="">.</span><span class="const token" data-binding="const-List.length" data-verso-hover="16">length</span><span class="inter-text"> </span><span class="const token" data-binding="const-Eq" data-verso-hover="9">=</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.1" data-verso-hover="23">l</span><span class="unknown token" data-binding="">.</span><span class="const token" data-binding="const-List.length" data-verso-hover="16">length</span></span><span class="text"> :=</span><span class="text">
+</span><span class="highlighted"><span class="keyword token" data-binding="">fun</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.1" data-verso-hover="23">l</span><span class="inter-text"> </span><span class="unknown token" data-binding="">=&gt;</span><span class="inter-text">
+  </span><span class="const token" data-binding="const-of_eq_true" data-verso-hover="27">of_eq_true</span><span class="inter-text"> </span><span class="unknown token" data-binding="">(</span><span class="const token" data-binding="const-Eq.trans" data-verso-hover="28">Eq.trans</span><span class="inter-text"> </span><span class="unknown token" data-binding="">(</span><span class="const token" data-binding="const-congrFun'" data-verso-hover="29">congrFun'</span><span class="inter-text"> </span><span class="unknown token" data-binding="">(</span><span class="const token" data-binding="const-congrArg" data-verso-hover="30">congrArg</span><span class="inter-text"> </span><span class="const token" data-binding="const-Eq" data-verso-hover="9">Eq</span><span class="inter-text"> </span><span class="unknown token" data-binding="">(</span><span class="const token" data-binding="const-congrArg" data-verso-hover="30">congrArg</span><span class="inter-text"> </span><span class="const token" data-binding="const-List.length" data-verso-hover="16">List.length</span><span class="inter-text"> </span><span class="unknown token" data-binding="">(</span><span class="const token" data-binding="const-List.append_nil" data-verso-hover="31">List.append_nil</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.1" data-verso-hover="23">l</span><span class="unknown token" data-binding="">)</span><span class="unknown token" data-binding="">)</span><span class="unknown token" data-binding="">)</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.1" data-verso-hover="23">l</span><span class="unknown token" data-binding="">.</span><span class="const token" data-binding="const-List.length" data-verso-hover="16">length</span><span class="unknown token" data-binding="">)</span><span class="inter-text"> </span><span class="unknown token" data-binding="">(</span><span class="const token" data-binding="const-eq_self" data-verso-hover="32">eq_self</span><span class="inter-text"> </span><span class="var token" data-binding="var-_pp_uniq.1" data-verso-hover="23">l</span><span class="unknown token" data-binding="">.</span><span class="const token" data-binding="const-List.length" data-verso-hover="16">length</span><span class="unknown token" data-binding="">)</span><span class="unknown token" data-binding="">)</span></span></code></span></span><span class="inter-text"> </span><span class="const token" data-binding="const-RpyleanExamples.append_nil_length" data-verso-hover="22">append_nil_length</span></code><div class="panel-divider"></div>
+            <div class="panel-cell">
+              <div class="info-panel"></div>
+              </div>
+            </div>
+          <aside class="notes"><p>
+              You write <code>by simp</code> to prove that appending the empty list doesn't change a
+list's length. Now put your cursor on the <code>#print</code>: that's the term simp
+actually built. simp found the lemma <code>List.append_nil</code>, applied it, and
+reified the rewrite as a proof term -- <code>of_eq_true (Eq.trans (congrArg ...))</code>.
+You would never write this by hand, and you never see it. The tactic's only
+job was to produce that term; then it vanished. The kernel checks the term,
+and never knew simp existed.</p>
+            </aside></section>
+        <section>
+          <h2>
+            None of these reach Lean's kernel, which cares about <strong>type checking</strong></h2>
+          <p>
+            <em>notation · implicits · coercions · instances · tactics</em></p>
+          <p>
+            That's everything that happens after the above "finish".
+The kernel's job is well enough contained that one can write their own!</p>
+          </section>
+        <section>
+          <h2>
+            What <strong>does</strong> it do?</h2>
+          <p>
+            A <em>little</em> program whose job it is to look at all the declarations in Lean's <em>environment</em> and check
+each thing against its purported type.</p>
+          </section>
+        <section>
+          <h2>
+            So We Did</h2>
+          <p>
+            <a href="https://github.com/Julian/rpylean">rpylean</a></p>
+          </section>
+        <section>
+          <h2>
+            And Before Us Lots of Others!</h2>
+          <p>
+            There's a whole arena of them.</p>
+          <p>
+            <a href="https://arena.lean-lang.org/">arena.lean-lang.org</a></p>
+          <aside class="notes"><p>
+              Building one makes the real questions concrete. There are many independent
+re-implementations of Lean's kernel -- the Lean kernel arena collects them,
+each checking the same exported terms. (rpylean is one of them.) When several
+independent checkers agree on a proof, that agreement is itself the
+assurance. Pull up the arena here and walk through who's playing.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Why do this?</h2>
+          <ul>
+            <li>
+              <p>
+                you get a second opinion on Lean's answers</p>
+              </li>
+            <li>
+              <p>
+                to learn about Lean's behavior</p>
+              </li>
+            <li>
+              <p>
+                to learn about its type theory</p>
+              </li>
+            <li>
+              <p>
+                for fun?</p>
+              </li>
+            <li>
+              <p>
+                the kernel stops being magic</p>
+              </li>
+            </ul>
+          </section>
+        <section>
+          <h2>
+            Given a fully elaborated term...</h2>
+          <p>
+            Does this term really have this type? -- re-checked from scratch.
+For theorems and definitions, <em>infer</em> the type, check it is definitionally equal to the one we need.</p>
+          <aside class="notes"><p>
+              One question, asked over and over: independently confirm the term inhabits the
+type -- no notation, no search, no tactics.
+The whole point is that you only have to trust this one small piece.</p>
+            </aside></section>
+        <section>
+          <h2>
+            A proof is a term, too</h2>
+          <div class="code-with-panel r-stretch">
+            <code class="hl lean block"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.definition-109">def</span><span class="inter-text"> </span><span class="const token" data-binding="const-RpyleanExamples.modusPonens" data-verso-hover="33">modusPonens</span><span class="inter-text"> </span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.implicitBinder-125">{</span><span class="var token" data-binding="var-_uniq.9558" data-verso-hover="34">p</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.9560" data-verso-hover="34">q</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.implicitBinder-125">:</span><span class="inter-text"> </span><span class="sort token" data-binding="sort-14430969920833713138" data-verso-hover="35">Prop</span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.implicitBinder-125">}</span><span class="inter-text"> </span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.explicitBinder-138">(</span><span class="var token" data-binding="var-_uniq.9564" data-verso-hover="36">h</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.explicitBinder-138">:</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.9558" data-verso-hover="34">p</span><span class="inter-text"> </span><span class="punctuation operator token" data-binding="kw-occ-Lean.Parser.Term.arrow-143">→</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.9560" data-verso-hover="34">q</span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.explicitBinder-138">)</span><span class="inter-text"> </span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.explicitBinder-152">(</span><span class="var token" data-binding="var-_uniq.9566" data-verso-hover="37">hp</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.explicitBinder-152">:</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.9558" data-verso-hover="34">p</span><span class="punctuation bracket token" data-binding="kw-occ-Lean.Parser.Term.explicitBinder-152">)</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.typeSpec-161">:</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.9560" data-verso-hover="34">q</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Command.declValSimple-165">:=</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.9564" data-verso-hover="36">h</span><span class="inter-text"> </span><span class="var token" data-binding="var-_uniq.9566" data-verso-hover="37">hp</span></code><div class="panel-divider"></div>
+            <div class="panel-cell">
+              <div class="info-panel"></div>
+              </div>
+            </div>
+          <aside class="notes"><p>
+              Curry-Howard, for mathematicians: a proposition is a type, and a proof of it
+is a term of that type. So "a valid proof of P" means exactly "this term has
+type P" -- checking a proof and type-checking a term are the same activity,
+which is why one small kernel handles both. Here modus ponens -- from <code>p → q</code>
+and <code>p</code>, conclude <code>q</code> -- is literally <code>h</code> applied to <code>hp</code>, function
+application, checked like any other.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Lots and lots of terms...</h2>
+          <p>
+            A handful of shapes:</p>
+          <ul>
+            <li>
+              <p>
+                a variable (bound or free)</p>
+              </li>
+            <li>
+              <p>
+                a sort -- <code>Prop</code>, <code>Type</code>, ...</p>
+              </li>
+            <li>
+              <p>
+                a constant -- a reference to a declaration: <code>Nat</code>, <code>List</code>, a theorem, ...</p>
+              </li>
+            <li>
+              <p>
+                a literal -- <code>37</code>, <code>"hello"</code></p>
+              </li>
+            <li>
+              <p>
+                an application <code>f a</code></p>
+              </li>
+            <li>
+              <p>
+                a <code>fun</code> or a <code>∀</code></p>
+              </li>
+            <li>
+              <p>
+                a <code>let</code>, or a projection</p>
+              </li>
+            </ul>
+          <aside class="notes"><p>
+              There aren't many kinds of term, and the whole kernel is just "how to handle
+each shape." One subtlety worth saying aloud: an inductive type like <code>Nat</code> or
+<code>List</code>, its constructors, and its recursor are <strong>not</strong> term shapes -- they live
+in the environment as declarations, and a term just refers to them as
+constants. So the whole vocabulary really is this: variables, sorts, constants,
+literals, application, functions and function-types, let-bindings, and
+projections -- essentially all of mathematics, fully spelled out.</p>
+            </aside></section>
+        <section>
+          <h2>
+            How rpylean checks a theorem</h2>
+          <pre><code class="language-python">class W_Theorem(W_DeclarationKind):
+
+    def type_check(self, type, tc):
+        type_type = type.infer(tc)
+        type_type_whnf = type_type.whnf(tc)
+        if not isinstance(type_type_whnf, W_Sort):
+            return W_NotASort(...)
+        if not type_type_whnf.level.eq(W_LEVEL_ZERO):
+            return W_NotAProp(...)
+        val_type = self.value.infer(tc)
+        if not tc.def_eq(type, val_type):
+            return W_TypeError(...)
+</code></pre><aside class="notes"><p>
+              That's the whole thing. Four real lines of work. One: infer the type's own
+type. Two: it must be a <code>Sort</code> -- a genuine type. Three: its level must be
+zero, i.e. it must be a <code>Prop</code>, because this is a theorem -- universes are how
+the kernel separates a proposition from a type: <code>Prop</code> is level 0, <code>Type</code> is
+level 1, and so on. Four: infer the
+proof's type and check it's definitionally equal to the claimed type. infer,
+whnf, <code>def_eq</code> -- exactly the three moves from the previous slide. Everything
+else on screen is just which error to report when a check fails. (I trimmed
+those error arguments to <code>...</code> here.)</p>
+            </aside></section>
+        <section>
+          <h2>
+            What an export looks like</h2>
+          <pre><code class="language-json">{"in":1,"str":{"pre":0,"str":"Nat"}}      -- name #1  = Nat
+{"il":1,"succ":0}                          -- level #1 = 0 + 1
+{"ie":0,"sort":1}                          -- expr  #0 = Sort 1  (Type)
+{"const":{"name":1,"us":[]},"ie":1}        -- expr  #1 = the constant Nat
+{"def":{"name":..,"type":..,"value":..}}   -- a declaration
+</code></pre><aside class="notes"><p>
+              The export is line-based: four tables -- names, universe levels,
+expressions, declarations -- each row referenced later by an integer index.
+Big terms stay small because everything is shared by index. rpylean's parser
+turns each line into one of those term shapes from the zoo.</p>
+            </aside></section>
+        <section>
+          <h2>
+            rpylean accepts the good ones</h2>
+          <pre><code class="language-text">$ rpylean check basicDef.ndjson
+basicDef ... OK
+summary: 1/1 decls checked
+</code></pre><aside class="notes"><p>
+              Run a good case through rpylean and it passes: the value's type matches the
+declared type, <code>def_eq</code> holds, and nothing is returned. That's the happy path
+straight through the code on the previous slide.</p>
+            </aside></section>
+        <section>
+          <h2>
+            ...and catches the bad ones</h2>
+          <pre><code class="language-text">$ rpylean check nonPropThm.ndjson
+theorem nonPropThm : Prop := ∀ (x : Prop), x
+                     ^^^^
+                     has sort
+                       Type
+                     but the type of a theorem must be a proposition (Prop)
+</code></pre><aside class="notes"><p>
+              Now a bad theorem: its type is <code>Prop</code>, whose sort is <code>Type</code> -- not level zero,
+so it isn't a proposition. That's exactly the <code>level.eq(W_LEVEL_ZERO)</code> check
+on the previous slide failing and returning <code>W_NotAProp</code>; the message is
+rpylean rendering that error. Real output, both cases from the arena tutorial.</p>
+            </aside></section>
+        <section>
+          <h2>
+            A whole suite of these</h2>
+          <p>
+            The kernel arena ships a tutorial: ~120 good and bad cases like these.</p>
+          <p>
+            <a href="https://arena.lean-lang.org/tutorial/">arena.lean-lang.org/tutorial</a></p>
+          <p>
+            rpylean runs them all.</p>
+          <aside class="notes"><p>
+              Those two were 2 of about 120 declarations in the kernel arena's tutorial -- a
+curated suite, each case meant either to type-check or to be rejected,
+covering every corner of the type system. rpylean passes the whole thing. Any
+checker worth trusting has to agree on all of them.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Running it</h2>
+          <pre><code class="language-text">$ rpylean check init-prelude.ndjson
+Nat.zero ... OK
+Nat.succ ... OK
+Nat.rec ... OK
+Nat ... OK
+...
+summary: 2102/2102 decls checked, peak 102 MB, allocated 71 MB, heartbeats 0
+checked in 0.109501s
+</code></pre><aside class="notes"><p>
+              A real run: re-checking Lean's entire prelude -- 2102 declarations -- from a
+lean4export <code>.ndjson</code>. There's also a mode that talks to a live Lean toolchain
+directly, and a REPL for poking at single terms.</p>
+            </aside></section>
+        <section>
+          <h2>
+            One real question: are two terms equal?</h2>
+          <p>
+            To decide it, the kernel reduces both sides and compares. A few moves:</p>
+          <aside class="notes"><p>
+              Type-checking comes down to this. To check <code>f a</code>, you check <code>a</code>'s type is the
+one <code>f</code> expects; to accept <code>rfl : x = y</code>, you check <code>x</code> and <code>y</code> are the same.
+And "equal" doesn't mean equal on the page -- it means equal after computing,
+as far as both sides will go. That's definitional equality, the kernel's real
+work, and to decide it the kernel reduces. There are only a handful of moves --
+one per slide.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Beta</h2>
+          <p>
+            Apply a function.</p>
+          <p>
+            <code>(fun x =&gt; b) a</code> becomes <code>b</code>, with <code>a</code> in for <code>x</code>.</p>
+          <p>
+            <code>(fun n =&gt; n * n) 3</code>  ⟶  <code>3 * 3</code></p>
+          <aside class="notes"><p>
+              Beta reduction: the most familiar move. A function applied to an argument
+substitutes the argument into the body -- here, squaring at 3. This is just
+"plug in".</p>
+            </aside></section>
+        <section>
+          <h2>
+            Delta</h2>
+          <p>
+            Unfold a definition by its name.</p>
+          <p>
+            <code>double 3</code>  ⟶  <code>3 + 3</code></p>
+          <aside class="notes"><p>
+              Delta reduction: replace a defined constant with the term it was defined to
+be. This is how <code>double 3</code> becomes <code>3 + 3</code>, and how the kernel sees through
+abbreviations when it needs to.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Zeta</h2>
+          <p>
+            Substitute a <code>let</code>.</p>
+          <p>
+            <code>let n := 5; n * n</code>  ⟶  <code>5 * 5</code></p>
+          <aside class="notes"><p>
+              Zeta reduction: a <code>let n := v; body</code> becomes <code>body</code> with <code>v</code> in for <code>n</code>. Like
+beta, but for local definitions.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Iota</h2>
+          <p>
+            Run a recursor -- pattern-match on a constructor.</p>
+          <p>
+            <code>match 3 with | 0 =&gt; 0 | n + 1 =&gt; n</code>  ⟶  <code>2</code></p>
+          <aside class="notes"><p>
+              Iota reduction: this is how recursion and induction actually compute. Here
+<code>3</code> is <code>Nat.succ 2</code>, so the <code>n + 1</code> branch fires and hands back <code>2</code> -- that's
+the predecessor function. The same move is what makes <code>2 + 2</code> reduce to <code>4</code>.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Projection</h2>
+          <p>
+            Pull a field out of a structure.</p>
+          <p>
+            <code>(3, 4).1</code>  ⟶  <code>3</code></p>
+          <aside class="notes"><p>
+              Projection reduction: given a constructed structure, extract one of its
+fields. Here, the first coordinate of the point <code>(3, 4)</code>. Cheap, but its own
+kind of step.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Proof irrelevance</h2>
+          <p>
+            Any two proofs of the same <code>Prop</code> are equal.</p>
+          <p>
+            Two proofs of <code>Prime 7</code> are interchangeable.</p>
+          <aside class="notes"><p>
+              A special rule, not a reduction: if two terms are proofs of the same
+proposition, the kernel treats them as equal without comparing them. However
+you proved <code>7</code> is prime, the kernel won't distinguish your proof from any
+other -- only that the proposition holds.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Reductions compose</h2>
+          <p>
+            <code>double 3</code>  ⟶  <code>3 + 3</code>  ⟶  <code>6</code></p>
+          <p>
+            delta, then iota</p>
+          <aside class="notes"><p>
+              Real checking chains these moves. <code>double 3</code> unfolds by delta to <code>3 + 3</code>,
+then the additions run by iota down to <code>6</code>. The kernel just keeps applying
+moves until nothing changes -- then compares.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Checking other terms...</h2>
+          </section>
+        <section>
+          <h2>
+            An axiom has no value</h2>
+          <p>
+            It's assumed -- never checked.</p>
+          <aside class="notes"><p>
+              An axiom stores a name and a type but no proof term. The kernel never checks
+it; it's simply believed. Useful and necessary -- and, as we'll see, a place
+where trust can leak.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Trust: "Proof" is not the same as "Proves what you meant"</h2>
+          <aside class="notes"><p>
+              Now the sharp edge. The kernel guarantees "this term has this type." It does
+not guarantee the type is the statement you intended. Remember instance
+resolution from the very start? Watch what it can do.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Suppose, far away, one line</h2>
+          <pre><code class="language-lean">local instance instNatAdd : Add ℕ := ⟨Nat.mul⟩
+</code></pre><aside class="notes"><p>
+              Imagine somewhere above -- maybe in an import -- a single line quietly
+redefines <code>+</code> on <code>ℕ</code> to mean multiplication. This is exactly the instance
+search we met earlier, now with a surprising answer in the database. Nothing
+else changes. Watch.</p>
+            </aside></section>
+        <section>
+          <h2>
+            It says <code>1 + 0 = 0</code></h2>
+          <div class="code-with-panel r-stretch">
+            <code class="hl lean block"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Command.theorem-418">theorem</span><span class="inter-text"> </span><span class="const token" data-binding="const-RpyleanExamples.oneAddZero" data-verso-hover="38">oneAddZero</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Term.typeSpec-437">:</span><span class="inter-text"> </span><span class="literal number token" data-binding="" data-verso-hover="2">1</span><span class="inter-text"> </span><span class="punctuation operator token" data-binding="kw-occ-«term_+_»-439">+</span><span class="inter-text"> </span><span class="literal number token" data-binding="" data-verso-hover="2">0</span><span class="inter-text"> </span><span class="punctuation operator token" data-binding="kw-occ-«term_=_»-439">=</span><span class="inter-text"> </span><span class="literal number token" data-binding="" data-verso-hover="2">0</span><span class="inter-text"> </span><span class="built-in delim token" data-binding="kw-occ-Lean.Parser.Command.declValSimple-449">:=</span><span class="inter-text"> </span><span class="tactic" data-tactic-range="452-454"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Term.byTactic-452" data-verso-hover="7">by</span><span class="tactic-state" style="display:none"><span class="goal"><span class="conclusion"><span class="prefix">⊢ </span><span class="type"><span class="inter-text"></span><span class="unknown token" data-binding="">1</span><span class="inter-text"> </span><span class="const token" data-binding="const-HAdd.hAdd" data-verso-hover="8">+</span><span class="inter-text"> </span><span class="unknown token" data-binding="">0</span><span class="inter-text"> </span><span class="const token" data-binding="const-Eq" data-verso-hover="9">=</span><span class="inter-text"> </span><span class="unknown token" data-binding="">0</span></span></span></span></span></span><span class="inter-text"> </span><span class="tactic" data-tactic-range="455-458"><span class="keyword token" data-binding="kw-occ-Lean.Parser.Tactic.tacticRfl-455" data-verso-hover="10">rfl</span><span class="tactic-state" style="display:none">All goals completed! 🐙</span></span></code><div class="panel-divider"></div>
+            <div class="panel-cell">
+              <div class="info-panel"></div>
+              </div>
+            </div>
+          <aside class="notes"><p>
+              Here is a theorem. It reads <code>1 + 0 = 0</code>, and Lean accepts it. Put your cursor
+on the <code>+</code>. Notice the instance from the previous slide is nowhere here --
+it's hidden in an invisible argument.</p>
+            </aside></section>
+        <section>
+          <h2>
+            The kernel checked <code>Nat.mul 1 0 = 0</code></h2>
+          <aside class="notes"><p>
+              Instance resolution picked our redefinition, whose <code>add</code> is <code>Nat.mul</code>. So the
+proposition actually formed and certified is <code>Nat.mul 1 0 = 0</code> -- which is
+true, <code>1 * 0 = 0</code>, so it passes. The kernel was not fooled and not wrong. It
+certified a true statement -- just not the one you'd read off the page. That
+gap is the whole reason to understand the kernel.</p>
+            </aside></section>
+        <section>
+          <h2>
+            The same moves -- now ours</h2>
+          <ul>
+            <li>
+              <p>
+                infer a term's type</p>
+              </li>
+            <li>
+              <p>
+                reduce to normal form (beta, delta, ...)</p>
+              </li>
+            <li>
+              <p>
+                check two terms are definitionally equal</p>
+              </li>
+            </ul>
+          <aside class="notes"><p>
+              For each declaration: infer the value's type, then check it's definitionally
+equal to the declared type -- using exactly the reductions we covered. The
+same algorithm a real kernel runs, just one we can read and poke at.</p>
+            </aside></section>
+        <section>
+          <h2>
+            A theorem is a type and a proof</h2>
+          <pre><code class="language-lean">theorem two_add_two : 2 + 2 = 4 := rfl
+</code></pre><p>
+            the type <code>2 + 2 = 4</code> · the proof <code>rfl</code></p>
+          <aside class="notes"><p>
+              Take a concrete theorem. It has exactly two parts: a type -- the proposition
+<code>2 + 2 = 4</code> -- and a value, the proof <code>rfl</code>. To accept it, rpylean must
+confirm the proposition really is a proposition, and that the proof really
+has that type. Watch how little code that takes.</p>
+            </aside></section>
+        <section>
+          <h2>
+            A stray axiom is just believed</h2>
+          <p>
+            <code>sorry</code> is one of them.</p>
+          <aside class="notes"><p>
+              If a proof rests on an axiom -- including <code>sorry</code>, which is an axiom -- the
+kernel happily certifies it. The proof is valid; its foundation might not be
+one you'd endorse.</p>
+            </aside></section>
+        <section>
+          <h2>
+            <code>native_decide</code> skips the kernel</h2>
+          <aside class="notes"><p>
+              Some tactics defer to compiled native code that the kernel never re-checks.
+Fast, but it widens the circle of things you're trusting beyond the kernel
+itself.</p>
+            </aside></section>
+        <section>
+          <h2>
+            <code>#print axioms</code></h2>
+          <p>
+            What does my proof ultimately rest on?</p>
+          <aside class="notes"><p>
+              The practical takeaway: <code>#print axioms myTheorem</code> tells you exactly which
+assumptions your proof depends on. It's the cheapest honesty check you have.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Can we prove a kernel correct?</h2>
+          <p>
+            <code>lean4lean</code> does -- in Lean itself.</p>
+          <aside class="notes"><p>
+              There's a project, lean4lean, that verifies Lean's kernel inside Lean. Which
+opens its own wonderful rabbit hole about what it means to trust a system
+that checks itself.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Resources</h2>
+          <ul>
+            <li>
+              <p>
+                <a href="https://github.com/Julian/rpylean">rpylean</a> -- our type checker</p>
+              </li>
+            <li>
+              <p>
+                <a href="https://ammkrn.github.io/type_checking_in_lean4/">Type Checking in Lean 4</a> -- the theory</p>
+              </li>
+            <li>
+              <p>
+                <a href="https://github.com/leanprover/lean4/tree/master/src/kernel">Lean's own kernel</a> -- the real thing, in C++</p>
+              </li>
+            <li>
+              <p>
+                <a href="https://arena.lean-lang.org/">the kernel arena</a> -- independent checkers, compared</p>
+              </li>
+            <li>
+              <p>
+                <a href="https://github.com/digama0/lean4lean">lean4lean</a> -- a Lean kernel verified in Lean</p>
+              </li>
+            <li>
+              <p>
+                <a href="https://github.com/leanprover/lean4export">lean4export</a> -- the export format we read</p>
+              </li>
+            </ul>
+          <aside class="notes"><p>
+              Everything here is also linked from rpylean's README. If you're curious how
+we get a checker this fast out of Python: it's written in RPython, the same
+toolchain behind PyPy -- see rpython.readthedocs.io. Start with the Type
+Checking in Lean 4 book if you want the theory, or just clone rpylean and run
+it against an export.</p>
+            </aside></section>
+        <section>
+          <h2>
+            Thank you</h2>
+          <p>
+            <em>Questions?</em>
+</p>
+          </section>
+        </div>
+      </div>
+    <script src="lib/reveal.js/dist/reveal.js"></script>
+    <script src="lib/reveal.js/plugin/notes/notes.js"></script>
+    <script src="lib/reveal.js/plugin/highlight/highlight.js"></script>
+    <script src="lib/katex/dist/katex.min.js"></script>
+    <script src="lib/math.js"></script>
+    <script>
+      
+      Reveal.initialize({
+        hash: true,
+        controls: true,
+        progress: true,
+        slideNumber: false,
+        center: true,
+        transition: 'slide',
+        width: 960,
+        height: 700,
+        margin: 0.040000,
+        navigationMode: 'default',
+        autoSlide: 0,
+        autoSlideStoppable: true,
+        autoSlideMethod: null,
+        plugins: [ RevealNotes, RevealHighlight ]
+      });
+    </script>
+    <script src="lib/marked.min.js"></script>
+    <script src="lib/popper.js"></script>
+    <script src="lib/tippy.js"></script>
+    <script src="lib/tippy-panel-filter.js"></script>
+    <script src="lib/highlighting.js"></script>
+    <script src="lib/code-block-bg.js"></script>
+    <script src="lib/pretty.js"></script>
+    <script src="lib/panel.js"></script>
+    <script src="lib/lightbox.js"></script>
+    <script src="lib/illuminate-reveal.js"></script>
+    </body>
+  </html>
